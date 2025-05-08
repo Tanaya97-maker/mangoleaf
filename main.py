@@ -2,22 +2,32 @@ import streamlit as st
 import tensorflow as tf
 import numpy as np
 from PIL import Image
+import gdown
+import os
 
-# Load model only once (optional: improve performance)
+# Load model only once using Streamlit's cache
 @st.cache_resource
 def load_model():
-    return tf.keras.models.load_model('densenet201_model.keras')
+    model_path = "densenet201_model.keras"
+    if not os.path.exists(model_path):
+        # Direct download link using gdown
+        url = "https://drive.google.com/uc?id=1p-V0imW_ORloHlWZgFnjyCdpf69r8KJX"
+        gdown.download(url, model_path, quiet=False)
+    return tf.keras.models.load_model(model_path)
+
+# Load the model
 model = load_model()
 
-# TensorFlow model prediction
+# Function to make predictions
 def model_prediction(test_image):
     # Load and preprocess the uploaded image
-    image = Image.open(test_image).convert("RGB")  # Ensure RGB
-    image = image.resize((224, 224))               # Match model input size
+    image = Image.open(test_image).convert("RGB")
+    image = image.resize((224, 224))  # Resize to model input size
     input_arr = tf.keras.preprocessing.image.img_to_array(image)
-    input_arr = input_arr / 255.0                  # Normalize
+    input_arr = input_arr / 255.0  # Normalize to [0, 1]
     input_arr = np.expand_dims(input_arr, axis=0)  # Add batch dimension
-    # Predict
+
+    # Predict using the model
     prediction = model.predict(input_arr)
     result_index = np.argmax(prediction)
     confidence = prediction[0][result_index]
