@@ -1,4 +1,16 @@
+[server]
+enableXsrfProtection = false
+headless = true
+enableCORS = false
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+base = "light"
+
 [menu]
 showGitHubButton = false
 showDownloadButton = false
 showStreamlitBranding = false
+
