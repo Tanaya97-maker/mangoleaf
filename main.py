@@ -82,9 +82,9 @@ elif app_mode == "DISEASE AND PESTICIDE":
     st.write("")  # Adds a blank line
     test_image = st.file_uploader("Choose image", type=["jpg", "png", "jpeg"])
     if test_image is not None:
-        if st.button("Show Image",use_container_width=True):
-            st.image(test_image,use_container_width=True)
-        if st.button("Detect",use_container_width=True):
+        if st.button("Show Image", use_container_width=True):
+            st.image(test_image, use_container_width=True)
+        if st.button("Detect", use_container_width=True):
             st.markdown(
                 "<h3 style='text-align: center; font-weight: bold;'>Model prediction</h3>",
                 unsafe_allow_html=True
@@ -92,30 +92,37 @@ elif app_mode == "DISEASE AND PESTICIDE":
             result_index, confidence = model_prediction(test_image)
             class_names = ['Anthracnose', 'Grey Blight', 'Healthy', 'Red Rust', 'Sooty Mould']
             predicted_class = class_names[result_index]
-            st.success(f"**Disease Detected** : {predicted_class}")
-            # Pesticide recommendation
-            pesticide_dict = {
-                'Anthracnose': (
-                    "1. Spraying of Kavach or Chlorothalonil (2%) or Carbendazim.\n\n"
-                    "OR\n\n"
-                    "2. Hot water treatment: Dip in hot water at 55°C for 15 minutes."
-                ),
-                'Grey Blight': (
-                    "Spraying of Mancozeb or Carbendazim (0.1% to 0.2%)."
-                ),
-                'Healthy': (
-                    "No pesticide needed."
-                ),
-                'Red Rust': (
-                    "Spraying of Bordeaux mixture or Copper Oxychloride (0.2%).\n\n"
-                    "Preparation: Mix 2 g in 1 L of water."
-                ),
-                'Sooty Mould': (
-                    "1. Spraying of insecticide like Monocrotophos or Methyl Demeton.\n\n"
-                    "OR\n\n"
-                    "2. Spraying of starch solution.\n\n"
-                    "   Preparation: Boil 1 kg of starch in water and dilute with 2 L of water."
-                )
-            }
-            pesticide = pesticide_dict.get(predicted_class, 'No recommendation available')
-            st.info(f"**Suggested Pesticide** : {pesticide}")
+
+            # Confidence threshold (adjust as needed, e.g., 0.7 = 70%)
+            confidence_threshold = 0.70
+            if confidence < confidence_threshold:
+                st.error("⚠️ Not a proper leaf image. Please upload a clear mango leaf image.")
+            else:
+                st.success(f"**Disease Detected** : {predicted_class}")
+
+                # Pesticide recommendation
+                pesticide_dict = {
+                    'Anthracnose': (
+                        "1. Spraying of Kavach or Chlorothalonil (2%) or Carbendazim.\n\n"
+                        "OR\n\n"
+                        "2. Hot water treatment: Dip in hot water at 55°C for 15 minutes."
+                    ),
+                    'Grey Blight': (
+                        "Spraying of Mancozeb or Carbendazim (0.1% to 0.2%)."
+                    ),
+                    'Healthy': (
+                        "No pesticide needed."
+                    ),
+                    'Red Rust': (
+                        "Spraying of Bordeaux mixture or Copper Oxychloride (0.2%).\n\n"
+                        "Preparation: Mix 2 g in 1 L of water."
+                    ),
+                    'Sooty Mould': (
+                        "1. Spraying of insecticide like Monocrotophos or Methyl Demeton.\n\n"
+                        "OR\n\n"
+                        "2. Spraying of starch solution.\n\n"
+                        "   Preparation: Boil 1 kg of starch in water and dilute with 2 L of water."
+                    )
+                }
+                pesticide = pesticide_dict.get(predicted_class, 'No recommendation available')
+                st.info(f"**Suggested Pesticide** : {pesticide}")
