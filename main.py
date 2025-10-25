@@ -6,6 +6,7 @@ import gdown
 import os
 
 # --- Force CPU for Streamlit Cloud (no GPU) ---
+# This line is good practice for Streamlit Cloud deployment.
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 # --- Model Loading and Caching ---
@@ -24,19 +25,22 @@ def load_model():
             st.error(f"Failed to download model: {e}")
             return None
     
-    # Load the model with compile=False to avoid ValueErrors on CPU
+    # Load the model with compile=False and empty custom_objects to maximize compatibility
     try:
-        model = tf.keras.models.load_model(model_path, compile=False)
+        # FIX APPLIED HERE: Added custom_objects={} as a strong workaround for serialization ValueErrors.
+        model = tf.keras.models.load_model(model_path, compile=False, custom_objects={})
         st.success("Model loaded successfully!")
         return model
     except Exception as e:
-        st.error(f"Error loading Keras model: {e}. Check TensorFlow/Keras version compatibility.")
+        # Display the specific error message to the user for better debugging
+        st.error(f"Error loading Keras model: {e}. Please check TensorFlow/Keras version compatibility.")
         return None
 
 # Load the model
 model = load_model()
 if model is None:
-    st.stop()  # Stop the app if model loading failed
+    # Use st.stop() to halt execution gracefully if loading fails
+    st.stop() 
 
 # --- Prediction Function ---
 def model_prediction(test_image):
@@ -56,7 +60,7 @@ def model_prediction(test_image):
     except UnidentifiedImageError:
         return None, 0.0
     except Exception as e:
-        # Optionally log the error for debugging
+        # You can add st.error(f"Prediction failed: {e}") here if you want to see specific prediction errors
         return None, 0.0
 
 # --- Streamlit App UI ---
