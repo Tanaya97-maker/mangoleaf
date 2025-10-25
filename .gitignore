@@ -1,0 +1,22 @@
+# --- Ignore Dependencies and Environments ---
+venv/
+__pycache__/
+*.pyc
+*.o
+*.so
+.DS_Store # macOS system files
+.streamlit/ # Streamlit cache files
+
+# --- Ignore Large/Binary Model Files ---
+# NEVER commit the actual model file to Git unless it is very small.
+densenet201_model.keras
+
+# --- Ignore Data Folders ---
+# These folders contain raw data and are usually too large for Git/GitHub.
+# You typically upload the code and document where the data comes from.
+test/
+train/
+val/
+
+# --- Ignore Jupyter Notebook Checkpoints ---
+.ipynb_checkpoints/
