@@ -5,37 +5,61 @@ from PIL import Image, UnidentifiedImageError
 import gdown
 import os
 
-# Load model only once using Streamlit's cache
+# --- Force CPU for Streamlit Cloud (no GPU) ---
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
+# --- Model Loading and Caching ---
 @st.cache_resource
 def load_model():
     model_path = "densenet201_model.keras"
+    
+    # Download the model if it doesn't exist
     if not os.path.exists(model_path):
         url = "https://drive.google.com/uc?id=1p-V0imW_ORloHlWZgFnjyCdpf69r8KJX"
-        gdown.download(url, model_path, quiet=False)
-    return tf.keras.models.load_model(model_path)
+        st.info("Downloading model... this may take a moment.")
+        try:
+            gdown.download(url, model_path, quiet=False)
+            st.success("Model downloaded successfully!")
+        except Exception as e:
+            st.error(f"Failed to download model: {e}")
+            return None
+    
+    # Load the model with compile=False to avoid ValueErrors on CPU
+    try:
+        model = tf.keras.models.load_model(model_path, compile=False)
+        st.success("Model loaded successfully!")
+        return model
+    except Exception as e:
+        st.error(f"Error loading Keras model: {e}. Check TensorFlow/Keras version compatibility.")
+        return None
 
 # Load the model
 model = load_model()
+if model is None:
+    st.stop()  # Stop the app if model loading failed
 
-# Function to make predictions
+# --- Prediction Function ---
 def model_prediction(test_image):
     try:
+        # Load and preprocess the image
         image = Image.open(test_image).convert("RGB")
         image = image.resize((224, 224))
         input_arr = tf.keras.preprocessing.image.img_to_array(image)
         input_arr = input_arr / 255.0
-        input_arr = np.expand_dims(input_arr, axis=0)
-
+        input_arr = np.expand_dims(input_arr, axis=0)  # single input tensor
+        
+        # Make prediction
         prediction = model.predict(input_arr)
         result_index = np.argmax(prediction)
         confidence = prediction[0][result_index]
         return result_index, confidence
     except UnidentifiedImageError:
         return None, 0.0
-    except Exception:
+    except Exception as e:
+        # Optionally log the error for debugging
         return None, 0.0
 
-# Sidebar
+# --- Streamlit App UI ---
 st.sidebar.title("Dashboard")
 app_mode = st.sidebar.selectbox("SELECT PAGE", ["HOME", "DISEASE AND PESTICIDE"])
 
@@ -43,10 +67,11 @@ app_mode = st.sidebar.selectbox("SELECT PAGE", ["HOME", "DISEASE AND PESTICIDE"]
 if app_mode == "HOME":
     st.image("2.png", use_container_width=True)
     st.markdown("""
-    Welcome to the Leaf Disease Recognition System! 🌿🔍
-
+    ## 🌿 Welcome to the Leaf Disease Recognition System! 🔍
+    
     Our mission is to help in identifying mango leaf diseases efficiently. Upload an image of a mango leaf, and our system will analyze it to detect any signs of diseases.
 
+    ---
     ### How It Works
     1. **Upload Image:** Go to the **Disease and Pesticide** page and upload an image of a mango leaf.
     2. **Analysis:** Deep learning algorithms analyze the image.
@@ -76,49 +101,52 @@ elif app_mode == "DISEASE AND PESTICIDE":
     test_image = st.file_uploader("Choose image", type=["jpg", "png", "jpeg"])
 
     if test_image is not None:
-        if st.button("Show Image", use_container_width=True):
-            try:
-                st.image(test_image, use_container_width=True)
-            except:
-                st.error("⚠️ Unable to display image. Please upload a valid image.")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.button("Show Image", use_container_width=True):
+                try:
+                    st.image(test_image, use_container_width=True)
+                except:
+                    st.error("⚠️ Unable to display image. Please upload a valid image.")
 
-        if st.button("Detect", use_container_width=True):
-            st.markdown("<h3 style='text-align: center; font-weight: bold;'>Model prediction</h3>", unsafe_allow_html=True)
+        with col2:
+            if st.button("Detect", use_container_width=True):
+                st.markdown("<h3 style='text-align: center; font-weight: bold;'>Model Prediction</h3>", unsafe_allow_html=True)
 
-            result_index, confidence = model_prediction(test_image)
+                result_index, confidence = model_prediction(test_image)
 
-            class_names = ['Anthracnose', 'Grey Blight', 'Healthy', 'Red Rust', 'Sooty Mould']
-            confidence_threshold = 0.80  
+                class_names = ['Anthracnose', 'Grey Blight', 'Healthy', 'Red Rust', 'Sooty Mould']
+                confidence_threshold = 0.80  
 
-            if result_index is None or confidence < confidence_threshold:
-                st.error("⚠️ Not a proper mango leaf image. Please upload a clear image of a mango leaf.")
-            else:
-                predicted_class = class_names[result_index]
-                st.success(f"**Disease Detected** : {predicted_class}")
+                if result_index is None or confidence < confidence_threshold:
+                    st.error("⚠️ **Prediction Failed** or **Confidence is too low** (< 80%). Please upload a clear image of a mango leaf.")
+                else:
+                    predicted_class = class_names[result_index]
+                    st.success(f"**Disease Detected** : {predicted_class} (Confidence: {confidence:.2f})")
 
-                pesticide_dict = {
-                    'Anthracnose': (
-                        "1. Spray Kavach or Chlorothalonil (2%) or Carbendazim.\n\n"
-                        "OR\n\n"
-                        "2. Hot water treatment: Dip in hot water at 55°C for 15 minutes."
-                    ),
-                    'Grey Blight': (
-                        "Spray Mancozeb or Carbendazim (0.1% to 0.2%)."
-                    ),
-                    'Healthy': (
-                        "No pesticide needed."
-                    ),
-                    'Red Rust': (
-                        "Spray Bordeaux mixture or Copper Oxychloride (0.2%).\n\n"
-                        "Preparation: Mix 2 g in 1 L of water."
-                    ),
-                    'Sooty Mould': (
-                        "1. Spray insecticide like Monocrotophos or Methyl Demeton.\n\n"
-                        "OR\n\n"
-                        "2. Spray starch solution.\n\n"
-                        "   Preparation: Boil 1 kg of starch in water and dilute with 2 L of water."
-                    )
-                }
+                    pesticide_dict = {
+                        'Anthracnose': (
+                            "1. Spray **Kavach** or **Chlorothalonil (2%)** or **Carbendazim**.\n\n"
+                            "OR\n\n"
+                            "2. Hot water treatment: Dip in hot water at 55°C for 15 minutes."
+                        ),
+                        'Grey Blight': (
+                            "Spray **Mancozeb** or **Carbendazim (0.1% to 0.2%)**."
+                        ),
+                        'Healthy': (
+                            "**No pesticide needed.** Keep monitoring for signs of disease."
+                        ),
+                        'Red Rust': (
+                            "Spray **Bordeaux mixture** or **Copper Oxychloride (0.2%)**.\n\n"
+                            "Preparation: Mix 2 g in 1 L of water."
+                        ),
+                        'Sooty Mould': (
+                            "1. Spray insecticide like **Monocrotophos** or **Methyl Demeton** (to control the insects that cause it).\n\n"
+                            "OR\n\n"
+                            "2. Spray **starch solution** (Boil 1 kg of starch in water and dilute with 2 L of water)."
+                        )
+                    }
 
-                pesticide = pesticide_dict.get(predicted_class, "No recommendation available")
-                st.info(f"**Suggested Pesticide** : {pesticide}")
+                    pesticide = pesticide_dict.get(predicted_class, "No recommendation available")
+                    st.info(f"**Suggested Management** :\n\n{pesticide}")
